@@ -20,9 +20,6 @@ static const float BELT_TOP  = BELT_Y + 30.0f;// Top surface of belt
 static const float FINGER_LENGTH = 90.0f;     // Total finger reach downward
 
 // ── ARM EXTENSION ──────────────────────────────────────────────────────
-// The housing is FIXED at HOUSING_Y forever.
-// armExtension grows from 0 (retracted) to armExtensionTarget (extended).
-// The finger unit (claw head) hangs at HOUSING_Y - armExtension.
 static const float HOUSING_Y      = 420.0f;   // Fixed Y of the housing center
 static const float ARM_MIN_EXT    = 0.0f;     // Fully retracted
 static const float ARM_EXTEND_SPD = 2.5f;     // px per frame
@@ -133,7 +130,6 @@ void UpdateBoxes() {
     boxes.erase(std::remove_if(boxes.begin(),boxes.end(),
         [](const Box& b){ return b.x>720.f && !b.lifted; }), boxes.end());
 
-    // Re-validate index after possible erasure
     if (isHoldingBox && (heldBoxIndex<0 || heldBoxIndex>=(int)boxes.size())) {
         isHoldingBox=false; heldBoxIndex=-1; robotState=RETURNING;
     }
@@ -206,13 +202,6 @@ void DrawFinger(float bx, float by, float angle, bool isLeft, float len) {
 
 // =====================================================================
 // DRAWING – FULL CLAW ASSEMBLY
-//
-// Design:
-//   • Housing (trapezoid + dome)  ← FIXED at HOUSING_Y, never moves
-//   • Telescoping rod             ← drawn from housing down to clawHeadY
-//   • Spring coils                ← stretch along the rod length
-//   • Finger unit                 ← at clawHeadY (moves up/down)
-//   • Held box                    ← hangs below finger unit
 // =====================================================================
 void DrawClaw(float cx) {
     float hy  = HOUSING_Y;           // housing center Y – FIXED
@@ -220,7 +209,6 @@ void DrawClaw(float cx) {
     float ext = armExtension;        // how far the arm has extended (px)
     float spread = 30.0f;
 
-    // ── FIXED HOUSING ──────────────────────────────────────────────
     // Top mount plate
     glColor3f(0.3f,0.3f,0.4f);
     glBegin(GL_QUADS);
@@ -255,7 +243,7 @@ void DrawClaw(float cx) {
     for(int i=0;i<=16;i++){float a=2.f*3.14159f*i/16;glVertex2f(cx+7*cos(a),hy+16+7*sin(a));}
     glEnd();
 
-    // ── TELESCOPING RODS (extend from housing bottom to finger unit) ─
+    // ── TELESCOPING RODS (extend from housing bottom to finger unit) 
     // Only draw if arm is extended at all
     if (ext > 0.5f) {
         float rodTop = hy - 10.0f;   // bottom of housing
@@ -441,12 +429,6 @@ void Timer(int value) {
 
                     heldBoxIndex = i;
                     targetAngle  = 30.f;  // open
-
-                    // How far must the arm extend so finger tips reach the box top?
-                    // clawHeadY = HOUSING_Y - ext
-                    // finger tips = clawHeadY - FINGER_LENGTH  (approx)
-                    // we want tips == b.y (top of box, sitting on belt surface)
-                    // → ext = HOUSING_Y - b.y - FINGER_LENGTH - 8 (8px clearance margin)
                     float needed = HOUSING_Y - b.y - FINGER_LENGTH - 8.f;
                     if (needed < 0.f) needed = 0.f;
                     // Clamp: can't extend past housing to belt distance minus some slack
